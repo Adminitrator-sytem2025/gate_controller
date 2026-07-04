@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gate Control Terminal & Secure Scanner</title>
+    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+    <style>
+        :root {
+            --bg-gradient: linear-gradient(135deg, #141e30, #243b55);
+            --glass-bg: rgba(255, 255, 255, 0.05);
+            --glass-border: rgba(255, 255, 255, 0.1);
+            --text-color: #f5f5f5;
+            --accent-color: #00adb5;
+            --danger-color: #ff2e63;
+            --success-color: #28a745;
+            --warning-color: #ffbc00;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; }
+        body { background: var(--bg-gradient); color: var(--text-color); min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 15px; }
+        
+        .controller-box { background: var(--glass-bg); backdrop-filter: blur(10px); border: 1px solid var(--glass-border); border-radius: 20px; padding: 25px; width: 100%; max-width: 600px; box-shadow: 0 15px 35px rgba(0,0,0,0.5); text-align: center; }
+        h1 { color: var(--accent-color); margin-bottom: 5px; font-size: 1.6rem; }
+        .subtitle { font-size: 0.85rem; color: #888; margin-bottom: 20px; }
+
+        .status-panel { background: rgba(0,0,0,0.3); border-radius: 12px; padding: 12px; margin-bottom: 20px; display: flex; justify-content: space-around; align-items: center; border: 1px solid var(--glass-border); font-size: 0.9rem; }
+        .status-item { display: flex; flex-direction: column; align-items: center; }
+        .status-item span:first-child { font-size: 0.75rem; color: #aaa; margin-bottom: 3px; }
+        .status-val { font-weight: bold; }
+        
+        .scanner-container { background: #000; border: 2px dashed var(--accent-color); border-radius: 12px; overflow: hidden; margin-bottom: 20px; display: none; position: relative; }
+        #scanner-view { width: 100%; min-height: 250px; background: #111; }
+        .scanner-laser { position: absolute; top: 50%; left: 5%; width: 90%; height: 2px; background-color: var(--danger-color); box-shadow: 0 0 8px var(--danger-color); animation: laserScan 2s infinite ease-in-out; pointer-events: none; z-index: 10; }
+        
+        @keyframes laserScan { 0% { top: 20%; } 50% { top: 80%; } 100% { top: 20%; } }
+
+        .gate-lock { width: 100px; height: 100px; border-radius: 50%; margin: 15px auto; display: flex; align-items: center; justify-content: center; font-size: 2.5rem; box-shadow: 0 0 20px rgba(0,0,0,0.3); transition: all 0.4s ease; }
+        .state-locked { background: rgba(255, 46, 99, 0.2); border: 4px solid var(--danger-color); color: var(--danger-color); box-shadow: 0 0 25px rgba(255, 46, 99, 0.4); }
+        .state-unlocked { background: rgba(40, 167, 69, 0.2); border: 4px solid var(--success-color); color: var(--success-color); box-shadow: 0 0 25px rgba(40, 167, 69, 0.4); }
+
+        .log-box { background: rgba(0,0,0,0.4); border: 1px solid var(--glass-border); border-radius: 10px; height: 110px; overflow-y: auto; text-align: left; padding: 10px; font-family: monospace; font-size: 0.8rem; color: #00ffcc; margin-bottom: 15px; }
+        
+        .shortcut-bar { display: flex; justify-content: space-between; gap: 10px; margin-top: 15px; }
+        .btn-shortcut { flex: 1; background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border); color: #ccc; padding: 8px; border-radius: 6px; font-size: 0.8rem; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 3px; transition: 0.2s; }
+        .btn-shortcut:hover { background: rgba(255,255,255,0.15); color: #fff; border-color: var(--warning-color); }
+        .key-badge { background: #333; padding: 1px 5px; border-radius: 4px; border: 1px solid #555; color: var(--warning-color); font-weight: bold; font-size: 0.7rem; }
+
+        .form-control { width: 100%; padding: 10px; background: rgba(0,0,0,0.4); border: 1px solid var(--glass-border); border-radius: 8px; color: #fff; outline: none; margin-bottom: 12px; font-size: 1rem; text-align: center; }
+        
+        .modal-overlay { position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.8); backdrop-filter: blur(5px); display: flex; justify-content: center; align-items: center; z-index: 1000; visibility: hidden; opacity: 0; transition: all 0.3s ease; }
+        .modal-overlay.active { visibility: visible; opacity: 1; }
+        .modal { background: #1f242d; border: 1px solid var(--glass-border); border-radius: 15px; padding: 20px; width: 95%; max-width: 400px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
+        .modal h3 { margin-bottom: 15px; color: var(--accent-color); text-align: center; }
+        
+        button { background: var(--accent-color); color: #fff; border: none; padding: 12px 15px; border-radius: 8px; cursor: pointer; font-weight: 600; width: 100%; transition: 0.3s; font-size: 0.95rem; }
+        button:hover { opacity: 0.9; }
+        .btn-toggle-cam { background: #4e54c8; margin-bottom: 15px; display: flex; align-items: center; justify-content: center; gap: 8px; }
+        
+        .flex-btn-group { display: flex; gap: 10px; margin-top: 5px; }
+        .btn-cancel { background: #555; color: #eee; }
+        .btn-cancel:hover { background: #666; }
+    </style>
+</head>
+<body>
+
+<div class="controller-box">
+    <h1>GATE CONTROLLER & SCANNER</h1>
+    <p class="subtitle">Hệ thống kiểm soát bảo mật thiết bị</p>
+
+    <div class="status-panel">
+        <div class="status-item"><span>IP Cổng</span><span class="status-val" id="lbl-current-ip" style="color:var(--accent-color)">192.168.1.10</span></div>
+        <div class="status-item"><span>Thiết Bị</span><span class="status-val" id="lbl-dev-name">Checking...</span></div>
+        <div class="status-item"><span>Hệ Thống</span><span class="status-val" id="lbl-dev-status">---</span></div>
+    </div>
+
+    <button class="btn-toggle-cam" id="btn-cam" onclick="toggleCameraScanner()">📷 BẬT CAMERA QUÉT MÃ VẠCH</button>
+
+    <div class="scanner-container" id="scanner-area">
+        <div class="scanner-laser"></div>
+        <div id="scanner-view"></div>
+    </div>
+
+    <div class="gate-lock state-locked" id="gate-visual">🔒</div>
+    <h3 id="lbl-gate-text" style="margin-bottom: 15px; color: var(--danger-color)">GATE LOCKED</h3>
+
+    <div style="margin-bottom: 15px;">
+        <input type="text" id="txt-swipe-card" class="form-control" placeholder="Mã thẻ quét được..." onkeypress="handleCardSwipe(event)">
+    </div>
+
+    <div class="log-box" id="log-screen">Mạng máy trạm khởi tạo...</div>
+
+    <div class="shortcut-bar">
+        <button class="btn-shortcut" onclick="triggerF1Action()">
+            <span class="key-badge">F1</span>
+            <span>Cấu Hình IP</span>
+        </button>
+        <button class="btn-shortcut" onclick="triggerF2Action()">
+            <span class="key-badge">F2</span>
+            <span>Active Thẻ Mới</span>
+        </button>
+    </div>
+</div>
+
+<div class="modal-overlay" id="modal-f1">
+    <div class="modal">
+        <h3>🔧 Cấu hình IP Máy Quét</h3>
+        <input type="text" id="txt-cfg-ip" class="form-control">
+        <div class="flex-btn-group">
+            <button class="btn-cancel" onclick="closeModal('modal-f1')">Hủy bỏ</button>
+            <button onclick="saveDeviceIP()">Xác nhận</button>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="modal-auth">
+    <div class="modal">
+        <h3 style="color: var(--warning-color);">🔒 Xác Thực Người Dùng</h3>
+        <p style="font-size: 0.8rem; color:#aaa; margin-bottom:15px; text-align:center;">Nhập tài khoản nhân viên đồng bộ từ hệ thống Server.</p>
+        <form onsubmit="handleUserVerification(event)">
+            <input type="text" id="auth-username" class="form-control" placeholder="Tên tài khoản" required autocomplete="username">
+            <input type="password" id="auth-password" class="form-control" placeholder="Mật khẩu" required autocomplete="current-password">
+            <div class="flex-btn-group">
+                <button type="button" class="btn-cancel" onclick="closeModal('modal-auth')">❌ Thoát / Hủy</button>
+                <button type="submit" style="background: var(--warning-color); color: #111; font-weight: bold;">Đăng Nhập</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="modal-overlay" id="modal-f2">
+    <div class="modal">
+        <h3>🆕 Form Đăng Ký / Active Thẻ</h3>
+        <form onsubmit="saveActiveCardF2(event)">
+            <div style="margin-bottom:10px;"><label style="font-size:0.8rem; color:#aaa;">Mã số thẻ</label><input type="text" id="txt-f2-cardid" class="form-control" required></div>
+            <div style="margin-bottom:10px;"><label style="font-size:0.8rem; color:#aaa;">Họ và tên nhân viên</label><input type="text" id="txt-f2-name" class="form-control" required></div>
+            <div style="margin-bottom:10px;"><label style="font-size:0.8rem; color:#aaa;">Mã nhân viên</label><input type="text" id="txt-f2-staff" class="form-control" required></div>
+            <div style="margin-bottom:10px;"><label style="font-size:0.8rem; color:#aaa;">Bộ phận</label><input type="text" id="txt-f2-dept" class="form-control" required placeholder="Ví dụ: SMT, SFC, QA"></div>
+            <div class="flex-btn-group">
+                <button type="button" class="btn-cancel" onclick="closeModal('modal-f2')">Đóng</button>
+                <button type="submit" style="background: var(--success-color);">Lưu & Đồng Bộ Cloud</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    // 🔴 DÁN URL WEB APP CỦA BẠN VÀO ĐÂY ĐỂ CHẠY ĐỒNG BỘ
+    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbz5vSebcDW5riw0n134pN6_jy1YHax3MAuFkp1bVZEQer5SgfMBJjNlt21ezYoUfPEH/exec";
+
+    let localIP = localStorage.getItem('gate_ip') || "192.168.1.10";
+    let cloudDevices = [];
+    let cloudCards = [];
+    let cloudUsers = {}; 
+    let isConnected = false;
+    let html5QrCodeScanner = null;
+    let pendingCardId = ""; 
+
+    // --- VÒNG LẶP KIỂM TRA TRẠNG THÁI SIÊU TỐC KHÔNG LAG MẠNG (2.5S/LẦN) ---
+    async function fastPingStatusLoop() {
+        if(!SCRIPT_URL || SCRIPT_URL.includes("ĐIỀN_URL")) return;
+        try {
+            const res = await fetch(`${SCRIPT_URL}?action=check_gate_status&ip=${localIP}`);
+            const liveData = await res.json();
+            
+            document.getElementById('lbl-current-ip').innerText = localIP;
+            document.getElementById('lbl-dev-name').innerText = liveData.name;
+            
+            let oldStatus = isConnected;
+            isConnected = liveData.status;
+
+            if (liveData.name === "Unregistered!") {
+                document.getElementById('lbl-dev-status').innerText = "Unknown";
+                document.getElementById('lbl-dev-status').style.color = "var(--danger-color)";
+                setGateVisual(false, "IP KHÔNG ĐƯỢC ĐĂNG KÝ");
+            } else {
+                if (isConnected) {
+                    document.getElementById('lbl-dev-status').innerText = "Connected";
+                    document.getElementById('lbl-dev-status').style.color = "var(--success-color)";
+                    if(oldStatus === false) {
+                        setGateVisual(false, "SẴN SÀNG QUẸT / QUÉT THẺ");
+                        writeLog("⚡ Kết nối phục hồi. Cổng đã mở từ Server Tổng.");
+                    }
+                } else {
+                    document.getElementById('lbl-dev-status').innerText = "Disconnected";
+                    document.getElementById('lbl-dev-status').style.color = "var(--danger-color)";
+                    setGateVisual(false, "DEVICE DISCONNECTED (LOCKED)");
+                }
+            }
+        } catch(err) {
+            console.log("Ping error: " + err.message);
+        }
+    }
+
+    // --- TẢI TOÀN BỘ CƠ SỞ DỮ LIỆU KHI KHỞI ĐỘNG MÁY ---
+    async function loadDataFromCloud() {
+        if(!SCRIPT_URL || SCRIPT_URL.includes("ĐIỀN_URL")) {
+            writeLog("Lỗi: SCRIPT_URL trống!"); return;
+        }
+        try {
+            writeLog("🔄 Đang nạp cơ sở dữ liệu thẻ bảo mật...");
+            const res = await fetch(`${SCRIPT_URL}?action=get_all_data`);
+            const db = await res.json();
+            cloudDevices = db.devices || [];
+            cloudCards = db.cards || [];
+            cloudUsers = db.users || {}; 
+            
+            writeLog(`Đồng bộ bộ nhớ đệm thành công: ${cloudCards.length} Thẻ.`);
+            fastPingStatusLoop();
+        } catch(err) {
+            writeLog("Lỗi kết nối database: " + err.message);
+        }
+    }
+
+    function handleCardSwipe(e) {
+        if (e.key !== 'Enter') return;
+        const cardId = document.getElementById('txt-swipe-card').value.trim();
+        document.getElementById('txt-swipe-card').value = "";
+        if (cardId) processCardData(cardId);
+    }
+
+    function processCardData(cardId) {
+        pendingCardId = cardId; 
+        if (!isConnected) {
+            setGateVisual(false, "CỔNG KHÓA (DISCONNECTED)");
+            return;
+        }
+        const card = cloudCards.find(c => c.id === cardId);
+
+        if (!card) {
+            setGateVisual(false, "THẺ CHƯA ĐĂNG KÝ");
+            writeLog(`❌ BÁO ĐỎ: Thẻ [${cardId}] chưa đăng ký trên hệ thống.`);
+            return;
+        }
+        if (!card.active) {
+            setGateVisual(false, "THẺ CHƯA ACTIVE");
+            writeLog(`❌ BÁO ĐỎ: Thẻ [${cardId}] chưa kích hoạt.`);
+            return;
+        }
+
+        if (card.allowedIPs.includes(localIP)) {
+            setGateVisual(true, "MỞ CỔNG THÀNH CÔNG");
+            writeLog(`HỢP LỆ: [${card.name}] đi qua.`);
+            setTimeout(() => { fastPingStatusLoop(); }, 3000);
+        } else {
+            setGateVisual(false, "SAI PHÂN QUYỀN IP");
+            writeLog(`TỪ CHỐI: [${card.name}] không có quyền tại IP này.`);
+        }
+    }
+
+    function triggerF1Action() {
+        document.getElementById('txt-cfg-ip').value = localIP;
+        openModal('modal-f1');
+    }
+
+    function triggerF2Action() {
+        document.getElementById('auth-username').value = "";
+        document.getElementById('auth-password').value = "";
+        openModal('modal-auth');
+    }
+
+    function handleUserVerification(e) {
+        e.preventDefault();
+        const userIn = document.getElementById('auth-username').value.trim();
+        const passIn = document.getElementById('auth-password').value;
+
+        if (cloudUsers[userIn] && cloudUsers[userIn].password === passIn) {
+            closeModal('modal-auth');
+            writeLog(`Xác thực thành công [${userIn}].`);
+            document.getElementById('txt-f2-cardid').value = pendingCardId;
+            openModal('modal-f2');
+        } else {
+            alert("Sai tài khoản hoặc mật khẩu hệ thống!");
+        }
+    }
+
+    function saveActiveCardF2(e) {
+        e.preventDefault();
+        const cardId = document.getElementById('txt-f2-cardid').value.trim();
+        const name = document.getElementById('txt-f2-name').value.trim();
+        const staff = document.getElementById('txt-f2-staff').value.trim();
+        const dept = document.getElementById('txt-f2-dept').value.trim();
+
+        let existingCard = cloudCards.find(c => c.id === cardId);
+        if (existingCard) {
+            existingCard.active = true; existingCard.name = name; existingCard.staffId = staff; existingCard.dept = dept;
+            if(!existingCard.allowedIPs.includes(localIP)) existingCard.allowedIPs.push(localIP);
+        } else {
+            cloudCards.push({ id: cardId, active: true, name: name, staffId: staff, dept: dept, allowedIPs: [localIP] });
+        }
+
+        closeModal('modal-f2');
+        writeLog(`Đang đẩy dữ liệu kích hoạt thẻ [${cardId}] lên Sheets...`);
+        postDataToSheets("sync_cards", cloudCards);
+        clearF2Form();
+    }
+
+    async function postDataToSheets(actionName, dataPayload) {
+        const details = { 'jsonData': JSON.stringify({ action: actionName, data: dataPayload }) };
+        let formBody = [];
+        for (let prop in details) { formBody.push(encodeURIComponent(prop) + "=" + encodeURIComponent(details[prop])); }
+        formBody = formBody.join("&");
+        try {
+            await fetch(SCRIPT_URL, {
+                method: "POST",
+                mode: "no-cors", 
+                headers: { "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8" },
+                body: formBody
+            });
+            writeLog("Đồng bộ ghi đè thành công.");
+            setTimeout(loadDataFromCloud, 1200);
+        } catch (err) { writeLog("Lỗi đồng bộ: " + err.message); }
+    }
+
+    function toggleCameraScanner() {
+        const area = document.getElementById('scanner-area');
+        const btn = document.getElementById('btn-cam');
+        if (area.style.display === "block") {
+            area.style.display = "none";
+            btn.innerText = "📷 BẬT CAMERA QUÉT MÃ VẠCH";
+            btn.style.background = "#4e54c8";
+            if (html5QrCodeScanner) { html5QrCodeScanner.stop().then(() => { html5QrCodeScanner = null; }); }
+        } else {
+            area.style.display = "block";
+            btn.innerText = "🛑 TẮT CAMERA QUÉT";
+            btn.style.background = "var(--danger-color)";
+            html5QrCodeScanner = new Html5Qrcode("scanner-view");
+            const config = { fps: 15, qrbox: (w, h) => { return { width: w * 0.8, height: h * 0.4 } } };
+            html5QrCodeScanner.start({ facingMode: "environment" }, config, (text) => {
+                writeLog(`📷 Quét: [${text}]`);
+                document.getElementById('txt-swipe-card').value = text;
+                processCardData(text);
+            }).catch(err => { writeLog("Lỗi Cam: " + err); toggleCameraScanner(); });
+        }
+    }
+
+    function setGateVisual(isUnlocked, text) {
+        const visual = document.getElementById('gate-visual');
+        const lbl = document.getElementById('lbl-gate-text');
+        lbl.innerText = text;
+        if(isUnlocked) {
+            visual.innerText = "🔓"; visual.className = "gate-lock state-unlocked"; lbl.style.color = "var(--success-color)";
+        } else {
+            visual.innerText = "🔒"; visual.className = "gate-lock state-locked"; lbl.style.color = "var(--danger-color)";
+        }
+    }
+
+    window.addEventListener('keydown', function(e) {
+        if (e.key === 'F1') { e.preventDefault(); triggerF1Action(); }
+        if (e.key === 'F2') { e.preventDefault(); triggerF2Action(); } 
+        if (e.key === 'Escape') { closeModal('modal-f1'); closeModal('modal-auth'); closeModal('modal-f2'); }
+    });
+
+    function saveDeviceIP() {
+        localIP = document.getElementById('txt-cfg-ip').value.trim();
+        localStorage.setItem('gate_ip', localIP);
+        closeModal('modal-f1');
+        fastPingStatusLoop();
+    }
+    function clearF2Form() {
+        document.getElementById('txt-f2-cardid').value = "";
+        document.getElementById('txt-f2-name').value = "";
+        document.getElementById('txt-f2-staff').value = "";
+        document.getElementById('txt-f2-dept').value = "";
+        pendingCardId = "";
+    }
+    function writeLog(text) {
+        const screen = document.getElementById('log-screen');
+        screen.innerHTML += `[${new Date().toLocaleTimeString()}] ${text}<br>`;
+        screen.scrollTop = screen.scrollHeight;
+    }
+    function openModal(id) { document.getElementById(id).classList.add('active'); }
+    function closeModal(id) { document.getElementById(id).classList.remove('active'); }
+
+    window.onload = function() {
+        loadDataFromCloud();
+        // Thiết lập vòng lặp chạy ngầm siêu nhẹ cập nhật trạng thái bật/tắt cổng
+        setInterval(fastPingStatusLoop, 2500); 
+    };
+</script>
+</body>
+</html>
