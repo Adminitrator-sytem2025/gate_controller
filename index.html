@@ -129,7 +129,7 @@
 
 <div class="modal-overlay" id="modal-f2">
     <div class="modal">
-        <h3>🆕 Form Đăng Ký / Active Thẻ</h3>
+        <h3>🆕 Form  Active Thẻ</h3>
         <form onsubmit="saveActiveCardF2(event)">
             <div style="margin-bottom:10px;"><label style="font-size:0.8rem; color:#aaa;">Mã số thẻ</label><input type="text" id="txt-f2-cardid" class="form-control" required></div>
             <div style="margin-bottom:10px;"><label style="font-size:0.8rem; color:#aaa;">Họ và tên nhân viên</label><input type="text" id="txt-f2-name" class="form-control" required></div>
@@ -177,8 +177,8 @@
                     document.getElementById('lbl-dev-status').innerText = "Connected";
                     document.getElementById('lbl-dev-status').style.color = "var(--success-color)";
                     if(oldStatus === false) {
-                        setGateVisual(false, "SẴN SÀNG QUẸT / QUÉT THẺ");
-                        writeLog("⚡ Kết nối phục hồi. Cổng đã mở từ Server Tổng.");
+                        setGateVisual(false, "SẴN SÀNG QUẸT ");
+                        writeLog("⚡ Kết nối phục hồi. Cổng đã kết nối từ Server.");
                     }
                 } else {
                     document.getElementById('lbl-dev-status').innerText = "Disconnected";
@@ -197,7 +197,7 @@
             writeLog("Lỗi: SCRIPT_URL trống!"); return;
         }
         try {
-            writeLog("🔄 Đang nạp cơ sở dữ liệu thẻ bảo mật...");
+            writeLog("🔄 Đang nạp cơ sở dữ liệu...");
             const res = await fetch(`${SCRIPT_URL}?action=get_all_data`);
             const db = await res.json();
             cloudDevices = db.devices || [];
@@ -228,21 +228,21 @@
 
         if (!card) {
             setGateVisual(false, "THẺ CHƯA ĐĂNG KÝ");
-            writeLog(`❌ BÁO ĐỎ: Thẻ [${cardId}] chưa đăng ký trên hệ thống.`);
+            writeLog(`❌ THẺ LỖI: Thẻ [${cardId}] chưa đăng ký trên hệ thống.`);
             return;
         }
         if (!card.active) {
             setGateVisual(false, "THẺ CHƯA ACTIVE");
-            writeLog(`❌ BÁO ĐỎ: Thẻ [${cardId}] chưa kích hoạt.`);
+            writeLog(`❌ THẺ LỖI: Thẻ [${cardId}] chưa kích hoạt.`);
             return;
         }
 
         if (card.allowedIPs.includes(localIP)) {
             setGateVisual(true, "MỞ CỔNG THÀNH CÔNG");
-            writeLog(`HỢP LỆ: [${card.name}] đi qua.`);
+            writeLog(`HỢP LỆ: [${card.name}].`);
             setTimeout(() => { fastPingStatusLoop(); }, 3000);
         } else {
-            setGateVisual(false, "SAI PHÂN QUYỀN IP");
+            setGateVisual(false, "THẺ CHƯA ACTIVE");
             writeLog(`TỪ CHỐI: [${card.name}] không có quyền tại IP này.`);
         }
     }
