@@ -65,7 +65,7 @@
 
 <div class="controller-box">
     <h1>GATE CONTROLLER & SCANNER</h1>
-    <p class="subtitle">Hệ thống kiểm soát bảo mật thiết bị</p>
+    <p class="subtitle">Hệ thống kiểm soát</p>
 
     <div class="status-panel">
         <div class="status-item"><span>IP Cổng</span><span class="status-val" id="lbl-current-ip" style="color:var(--accent-color)">0.0.0.0/span></div>
@@ -73,7 +73,7 @@
         <div class="status-item"><span>Hệ Thống</span><span class="status-val" id="lbl-dev-status">---</span></div>
     </div>
 
-    <button class="btn-toggle-cam" id="btn-cam" onclick="toggleCameraScanner()">📷 BẬT CAMERA QUÉT MÃ VẠCH</button>
+    <button class="btn-toggle-cam" id="btn-cam" onclick="toggleCameraScanner()">📷 BẬT CAMERA</button>
 
     <div class="scanner-container" id="scanner-area">
         <div class="scanner-laser"></div>
@@ -103,7 +103,7 @@
 
 <div class="modal-overlay" id="modal-f1">
     <div class="modal">
-        <h3>🔧 Cấu hình IP Máy Quét</h3>
+        <h3>🔧 Cấu hình IP Thiết Bị</h3>
         <input type="text" id="txt-cfg-ip" class="form-control">
         <div class="flex-btn-group">
             <button class="btn-cancel" onclick="closeModal('modal-f1')">Hủy bỏ</button>
@@ -115,7 +115,7 @@
 <div class="modal-overlay" id="modal-auth">
     <div class="modal">
         <h3 style="color: var(--warning-color);">🔒 Xác Thực Người Dùng</h3>
-        <p style="font-size: 0.8rem; color:#aaa; margin-bottom:15px; text-align:center;">Nhập tài khoản nhân viên đồng bộ từ hệ thống Server.</p>
+        <p style="font-size: 0.8rem; color:#aaa; margin-bottom:15px; text-align:center;">Nhập tài khoản nhân viên .</p>
         <form onsubmit="handleUserVerification(event)">
             <input type="text" id="auth-username" class="form-control" placeholder="Tên tài khoản" required autocomplete="username">
             <input type="password" id="auth-password" class="form-control" placeholder="Mật khẩu" required autocomplete="current-password">
